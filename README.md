@@ -104,6 +104,15 @@ $$
 
 図の例では、t=2.40秒時点での各エリアの同期状態が示されており、擾乱により一部のエリアで位相が変動している様子が確認できます。
 
+## 📚 参考文献
+
+本プロジェクトの理論的基盤は以下の研究に基づいています：
+
+**Susuki, Y., & Mezić, I.** (2011). Nonlinear Koopman modes and coherency identification of coupled swing dynamics. *Journal of Nonlinear Science*, 21(4), 567-593. 
+[DOI: 10.1007/s00332-010-9087-5](https://link.springer.com/article/10.1007/s00332-010-9087-5)
+
+この論文では、結合スイング動力学における非線形Koopmanモードとコヒーレンシー同定について詳述されており、本シミュレーションの数学的モデルの理論的根拠となっています。
+
 ## 📄 ライセンス
 
 このプロジェクトはMITライセンスの下で公開されています。
