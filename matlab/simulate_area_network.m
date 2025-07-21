@@ -1,3 +1,4 @@
+
 %% simulate_area_network.m  (non‑GUI version)
 % ------------------------------------------------------------
 % 10 エリア（北海道〜沖縄）の連成スイングを Excel テンプレートから読み込み
@@ -23,19 +24,7 @@ master = master(selIdx,:);    % フィルタ
 areas  = master.Area;
 Ns     = height(master);
 
-%% 3) 擾乱設定
-distAreaIdx = listdlg('PromptString','擾乱エリアを選択',...
-                      'SelectionMode','single',...
-                      'ListString',string(areas),...
-                      'InitialValue',1);
-if isempty(distAreaIdx), return; end
-answ = inputdlg({'発電機番号 (1～N_i)','擾乱量 Δδ [rad]'},...
-                '擾乱設定',1,{'1','-1.39'});
-distGen = str2double(answ{1});
-distAmp = str2double(answ{2});
-
-%% 4) パラメータセット
-%% 4) パラメータセット
+%% 3) パラメータセット
 N_each   = master.Generator_Count;
 
 % --- Excel から取得した発電機台数を確認 -----------------------
@@ -51,9 +40,56 @@ if strcmp(choiceGen,'キャンセル')
     disp('キャンセルされたのでスクリプトを終了します。');
     return;
 end
-N_each   = master.Generator_Count;
 cumN     = [0; cumsum(N_each)];
 G        = cumN(end);
+
+%% 4) 擾乱設定（複数台対応）
+% 擾乱を追加するかどうか確認
+addDisturbance = questdlg('擾乱を設定しますか？', '擾乱設定', 'はい', 'いいえ', 'はい');
+disturbances = [];
+
+if strcmp(addDisturbance, 'はい')
+    while true
+        % エリア選択
+        distAreaIdx = listdlg('PromptString','擾乱エリアを選択',...
+                              'SelectionMode','single',...
+                              'ListString',string(areas),...
+                              'InitialValue',1);
+        if isempty(distAreaIdx), break; end
+        
+        % 発電機番号と擾乱量の入力
+        prompt = {sprintf('発電機番号 (1～%d)', N_each(distAreaIdx)), '擾乱量 Δδ [rad]'};
+        answ = inputdlg(prompt, '擾乱設定', 1, {'1', '-1.39'});
+        if isempty(answ), break; end
+        
+        distGen = str2double(answ{1});
+        distAmp = str2double(answ{2});
+        
+        % 入力値チェック
+        if distGen < 1 || distGen > N_each(distAreaIdx)
+            warndlg(sprintf('発電機番号は1～%dの範囲で入力してください', N_each(distAreaIdx)));
+            continue;
+        end
+        
+        % 擾乱情報を保存
+        disturbances = [disturbances; distAreaIdx, distGen, distAmp];
+        
+        % 追加するかどうか確認
+        addMore = questdlg('さらに擾乱を追加しますか？', '擾乱追加', 'はい', 'いいえ', 'いいえ');
+        if strcmp(addMore, 'いいえ'), break; end
+    end
+end
+
+% 擾乱設定の表示
+if ~isempty(disturbances)
+    fprintf('設定された擾乱:\n');
+    for i = 1:size(disturbances, 1)
+        fprintf('  エリア%d, 発電機%d: %.3f rad\n', ...
+                disturbances(i,1), disturbances(i,2), disturbances(i,3));
+    end
+else
+    fprintf('擾乱なしでシミュレーションを実行します\n');
+end
 
 p_m_arr   = master.p_m;
 b_arr     = master.b;
@@ -97,8 +133,14 @@ for i = 1:Ns
     idx = cumN(i)+1 : cumN(i+1);
     delta0(idx) = asin(p_m_arr(i)/b_arr(i)) + eps_spread*randn(size(idx));
 end
-distGlobalIdx = cumN(distAreaIdx) + min(distGen,N_each(distAreaIdx));
-delta0(distGlobalIdx)=distAmp;
+% 複数擾乱の適用
+for i = 1:size(disturbances, 1)
+    distAreaIdx = disturbances(i, 1);
+    distGen = disturbances(i, 2);
+    distAmp = disturbances(i, 3);
+    distGlobalIdx = cumN(distAreaIdx) + distGen;
+    delta0(distGlobalIdx) = distAmp;
+end
 init=[delta0;omega0];
 
 %% 7) ODE 解く
@@ -108,6 +150,9 @@ t_span=[0 25];
 
 %% 8) 可視化
 visualize_network(t,y,Ns,N_each,cumN,baseLonLat);
+
+%% 9) COI時系列プロット
+plot_coi_timeseries(t,y,Ns,N_each,cumN);
 
 %% ---------- 関数 ----------
 function dy = dyn(~,y,N_each,Ns,cumN,Cmat,p_m,b,b_int,epsl)
@@ -120,10 +165,16 @@ function dy = dyn(~,y,N_each,Ns,cumN,Cmat,p_m,b,b_int,epsl)
             prev=(j==1)*(base+Ni-1)+(j>1)*(idx-1);
             next=(j==Ni)*base      +(j<Ni)*(idx+1);
             g=0;
-            nb=find(Cmat(i,:));
-            for n=nb
-                idxNb = cumN(n)+Nh(n);
-                g = g + Cmat(i,n)*sin(y(idx)-y(idxNb));
+            % 参考コードの方式：特定位置の発電機同士を結合
+            % 各エリアの最初の発電機が前のエリアの中央発電機と結合
+            if i > 1 && j == 1
+                prevAreaIdx = cumN(i-1) + floor(N_each(i-1)/2) + 1;
+                g = g + sin(y(idx) - y(prevAreaIdx));
+            end
+            % 各エリアの中央発電機が次のエリアの最初の発電機と結合
+            if i < Ns && j == floor(Ni/2) + 1
+                nextAreaIdx = cumN(i+1) + 1;  % 次エリアの最初の発電機
+                g = g + sin(y(idx) - y(nextAreaIdx));
             end
             delta=y(idx); omega=y(G+idx);
             dy(idx)=omega;
@@ -139,10 +190,15 @@ function visualize_network(t,y,Ns,N_each,cumN,baseLonLat)
     G=cumN(end);
     SCALE=4; radBase=0.25; radVec=radBase+0.01*N_each;
     load coastlines
-    figure; hold on; plot(coastlon,coastlat,'k');
+    
+    % Create figure with subplots
+    figure('Position',[100 100 1200 800]);
+    
+    % Left subplot: Map view
+    subplot(1,2,1); hold on; plot(coastlon,coastlat,'k');
     axis equal; xlim([128 146]); ylim([30 46]);
     title('Area COI vectors & generator angles');
-    annotation('textbox',[0.80 0.06 0.18 0.04],'String','Δf [Hz] / ω [rad/s]',...
+    annotation('textbox',[0.35 0.06 0.18 0.04],'String','Δf [Hz] / ω [rad/s]',...
                'EdgeColor','none','HorizontalAlignment','right','FontSize',8);
     sizeVec=200+8*N_each;
     hArea=scatter(baseLonLat(:,1),baseLonLat(:,2),sizeVec,'k','LineWidth',2);
@@ -154,6 +210,25 @@ function visualize_network(t,y,Ns,N_each,cumN,baseLonLat)
                         'MarkerFaceColor',[0.2 0.6 1],'MarkerEdgeColor','k');
     end
     timeText=text(0.02,0.95,'','Units','normalized','FontSize',9,'FontWeight','bold');
+    
+    % Right subplot: 1D line plot of generator angles
+    subplot(1,2,2); hold on;
+    colors = lines(Ns);
+    hLines = gobjects(Ns,1);
+    for i=1:Ns
+        hLines(i) = plot(1:N_each(i), nan(1,N_each(i)), 'Color', colors(i,:), ...
+                        'LineWidth', 2, 'Marker', 'o', 'MarkerSize', 4);
+    end
+    xlim([0.5 max(N_each)+0.5]);
+    ylim([0 2*pi]);
+    xlabel('Generator Index');
+    ylabel('Generator Angle (rad)');
+    title('Generator Angles (1D view)');
+    yticks([0 pi/2 pi 3*pi/2 2*pi]);
+    yticklabels({'0', '\pi/2', '\pi', '3\pi/2', '2\pi'});
+    legend(arrayfun(@(x) sprintf('Area %d', x), 1:Ns, 'UniformOutput', false), ...
+           'Location', 'eastoutside');
+    timeText2=text(0.02,0.95,'','Units','normalized','FontSize',9,'FontWeight','bold');
     for k=1:length(t)
         dMean=zeros(Ns,1); wMean=zeros(Ns,1);
         for i=1:Ns
@@ -165,14 +240,19 @@ function visualize_network(t,y,Ns,N_each,cumN,baseLonLat)
         newC=baseLonLat+[dx dy];
         set(hArea,'XData',newC(:,1),'YData',newC(:,2));
         for i=1:Ns
+            % Update map view
             set(hCirc(i),'XData',newC(i,1)+radVec(i)*cos(th),...
                          'YData',newC(i,2)+radVec(i)*sin(th));
             idx = cumN(i)+1 : cumN(i+1);                % 発電機 idx
             delAbs = mod(y(k, idx), 2*pi);              % 絶対角
             set(hGen(i), 'XData', newC(i,1) + radVec(i)*cos(delAbs), ...
                           'YData', newC(i,2) + radVec(i)*sin(delAbs));
+            
+            % Update 1D line plot
+            set(hLines(i), 'YData', delAbs);
         end
         set(timeText,'String',sprintf('t = %.2f s',t(k)));
+        set(timeText2,'String',sprintf('t = %.2f s',t(k)));
         drawnow;
     end
 end
