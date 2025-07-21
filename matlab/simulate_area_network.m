@@ -191,15 +191,13 @@ function visualize_network(t,y,Ns,N_each,cumN,baseLonLat)
     SCALE=4; radBase=0.25; radVec=radBase+0.01*N_each;
     load coastlines
     
-    % Create figure with subplots
-    figure('Position',[100 100 1200 800]);
+    % Create figure with subplots (上下配置)
+    figure('Position',[100 100 900 1200]);
     
-    % Left subplot: Map view
-    subplot(1,2,1); hold on; plot(coastlon,coastlat,'k');
+    % Top subplot: Map view (正方形)
+    subplot(2,1,1); hold on; plot(coastlon,coastlat,'k');
     axis equal; xlim([128 146]); ylim([30 46]);
     title('Area COI vectors & generator angles');
-    annotation('textbox',[0.35 0.06 0.18 0.04],'String','Δf [Hz] / ω [rad/s]',...
-               'EdgeColor','none','HorizontalAlignment','right','FontSize',8);
     sizeVec=200+8*N_each;
     hArea=scatter(baseLonLat(:,1),baseLonLat(:,2),sizeVec,'k','LineWidth',2);
     th=linspace(0,2*pi,200); hCirc=gobjects(Ns,1); hGen=gobjects(Ns,1);
@@ -211,8 +209,8 @@ function visualize_network(t,y,Ns,N_each,cumN,baseLonLat)
     end
     timeText=text(0.02,0.95,'','Units','normalized','FontSize',9,'FontWeight','bold');
     
-    % Right subplot: 1D line plot of generator angles
-    subplot(1,2,2); hold on;
+    % Bottom subplot: 1D line plot (横長)
+    subplot(2,1,2); hold on;
     colors = lines(Ns);
     hLines = gobjects(Ns,1);
     for i=1:Ns
