@@ -4,3 +4,4 @@ matplotlib>=3.5.0
 scipy>=1.7.0
 openpyxl>=3.0.0
 xlsxwriter>=3.0.0
+requests>=2.25.0

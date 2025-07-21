@@ -9,8 +9,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
 from scipy.integrate import odeint
 from generate_area_template import generate_template
+import requests
 import os
 import sys
 
@@ -44,6 +47,62 @@ class SwingSimulator:
             9: []          # 沖縄
         }
         
+        # 日本地図データのキャッシュ
+        self.japan_map_data = None
+        
+    def get_japan_map(self):
+        """日本の地図データを取得（キャッシュ機能付き）"""
+        if self.japan_map_data is not None:
+            return self.japan_map_data
+            
+        print("日本地図データを取得中...")
+        url = "https://raw.githubusercontent.com/dataofjapan/land/master/japan.geojson"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            self.japan_map_data = response.json()
+            print("✓ 地図データ取得完了")
+            return self.japan_map_data
+        except requests.RequestException as e:
+            print(f"⚠️  地図データ取得エラー: {e}")
+            print("簡易地図を使用します")
+            return None
+            
+    def draw_japan_map(self, ax):
+        """日本地図を描画"""
+        japan_data = self.get_japan_map()
+        
+        if japan_data:
+            # GeoJSONデータから日本地図を描画
+            patches = []
+            
+            for feature in japan_data['features']:
+                geometry = feature['geometry']
+                
+                if geometry['type'] == 'Polygon':
+                    coords = geometry['coordinates'][0]
+                    polygon = Polygon(coords, closed=True)
+                    patches.append(polygon)
+                elif geometry['type'] == 'MultiPolygon':
+                    for polygon_coords in geometry['coordinates']:
+                        coords = polygon_coords[0]
+                        polygon = Polygon(coords, closed=True)
+                        patches.append(polygon)
+            
+            if patches:
+                p = PatchCollection(patches, facecolor='lightgray', 
+                                  edgecolor='darkgray', linewidth=0.5, alpha=0.8)
+                ax.add_collection(p)
+        else:
+            # フォールバック: 簡易海岸線
+            # 日本の大まかな輪郭を描画
+            coastline_x = [129, 131, 133, 135, 137, 139, 141, 143, 145, 146, 
+                          145, 143, 141, 139, 137, 135, 133, 131, 129, 129]
+            coastline_y = [33, 31, 30, 31, 32, 34, 36, 38, 40, 42, 
+                          45, 44, 43, 42, 40, 38, 36, 34, 32, 33]
+            ax.plot(coastline_x, coastline_y, 'k-', linewidth=1, alpha=0.6)
+            
     def setup_excel_template(self):
         """Excelテンプレートのセットアップ"""
         if not os.path.exists(self.excel_file):
@@ -244,7 +303,9 @@ class SwingSimulator:
         # 図の設定
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
         
-        # 上部: マップビュー
+        # 上部: マップビュー - 日本地図を描画
+        self.draw_japan_map(ax1)
+        
         ax1.set_xlim([128, 146])
         ax1.set_ylim([30, 46])
         ax1.set_aspect('equal')
@@ -481,6 +542,7 @@ class SwingSimulator:
             
             # 10. 可視化
             print("\n=== 可視化開始 ===")
+            print("日本地図上にシミュレーション結果を表示します")
             print("注意: ウィンドウを閉じるとプログラムが終了します")
             
             self.visualize_network(t_span, solution, ns, n_each, cum_n, base_lon_lat, areas)
