@@ -11,9 +11,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.integrate import odeint
 from generate_area_template import generate_template
-import tkinter as tk
-from tkinter import messagebox, simpledialog
 import os
+import sys
 
 class SwingSimulator:
     def __init__(self):
@@ -60,62 +59,123 @@ class SwingSimulator:
             return None
             
     def select_areas(self, areas):
-        """エリア選択のダイアログ"""
-        root = tk.Tk()
-        root.withdraw()  # メインウィンドウを隠す
-        
-        selected_indices = []
+        """エリア選択の対話型入力"""
+        print("\n=== エリア選択 ===")
         print("利用可能なエリア:")
         for i, area in enumerate(areas):
-            print(f"{i+1}: {area}")
+            print(f"  {i+1}: {area}")
         
-        selection = input("可視化対象エリア番号を選択してください（スペース区切り、例: 1 2 3）: ")
-        try:
-            selected_indices = [int(x)-1 for x in selection.split()]
-            selected_indices = [i for i in selected_indices if 0 <= i < len(areas)]
-        except:
-            selected_indices = list(range(len(areas)))  # 全選択をデフォルト
-            
-        root.destroy()
-        return selected_indices
+        print("\n選択方法:")
+        print("  - 単一選択: 3")
+        print("  - 複数選択: 1 2 3 (スペース区切り)")
+        print("  - 全選択: all または Enter")
+        
+        while True:
+            try:
+                selection = input("\n可視化対象エリア番号を選択してください: ").strip()
+                
+                # 空入力または"all"で全選択
+                if not selection or selection.lower() == 'all':
+                    return list(range(len(areas)))
+                
+                # 数字の解析
+                selected_indices = [int(x)-1 for x in selection.split()]
+                
+                # 範囲チェック
+                valid_indices = [i for i in selected_indices if 0 <= i < len(areas)]
+                
+                if not valid_indices:
+                    print("❌ 有効なエリア番号を入力してください")
+                    continue
+                
+                # 選択確認
+                selected_names = [areas[i] for i in valid_indices]
+                print(f"✓ 選択されたエリア: {', '.join(selected_names)}")
+                
+                confirm = input("この選択でよろしいですか？ (y/n): ").strip().lower()
+                if confirm == 'y' or confirm == '':
+                    return valid_indices
+                    
+            except ValueError:
+                print("❌ 無効な入力です。数字を入力してください（例: 1 2 3）")
         
     def setup_disturbances(self, areas, n_each):
-        """擾乱設定"""
+        """擾乱設定の対話型入力"""
+        print("\n=== 擾乱設定 ===")
         disturbances = []
         
         while True:
-            add_dist = input("擾乱を設定しますか？ (y/n): ").lower()
+            print("\n擾乱を追加しますか？")
+            add_dist = input("  y: 擾乱追加, n: 擾乱なしで続行 (y/n): ").strip().lower()
+            
             if add_dist != 'y':
                 break
                 
             # エリア選択
-            print("エリア一覧:")
+            print("\n対象エリア:")
             for i, area in enumerate(areas):
-                print(f"{i+1}: {area}")
+                print(f"  {i+1}: {area} (発電機数: {n_each[i]}台)")
             
-            try:
-                area_idx = int(input("擾乱エリア番号: ")) - 1
-                if area_idx < 0 or area_idx >= len(areas):
-                    print("無効なエリア番号です")
-                    continue
+            while True:
+                try:
+                    area_input = input("\n擾乱エリア番号: ").strip()
+                    area_idx = int(area_input) - 1
                     
-                gen_num = int(input(f"発電機番号 (1-{n_each[area_idx]}): "))
-                if gen_num < 1 or gen_num > n_each[area_idx]:
-                    print(f"発電機番号は1-{n_each[area_idx]}の範囲で入力してください")
-                    continue
+                    if area_idx < 0 or area_idx >= len(areas):
+                        print(f"❌ エリア番号は1-{len(areas)}の範囲で入力してください")
+                        continue
                     
-                dist_amp = float(input("擾乱量 Δδ [rad]: "))
-                
-                disturbances.append((area_idx, gen_num, dist_amp))
-                
-                more = input("さらに擾乱を追加しますか？ (y/n): ").lower()
-                if more != 'y':
+                    print(f"✓ 選択エリア: {areas[area_idx]} (発電機数: {n_each[area_idx]}台)")
                     break
                     
-            except ValueError:
-                print("無効な入力です")
-                continue
+                except ValueError:
+                    print("❌ 数字を入力してください")
+            
+            # 発電機選択
+            while True:
+                try:
+                    gen_input = input(f"発電機番号 (1-{n_each[area_idx]}): ").strip()
+                    gen_num = int(gen_input)
+                    
+                    if gen_num < 1 or gen_num > n_each[area_idx]:
+                        print(f"❌ 発電機番号は1-{n_each[area_idx]}の範囲で入力してください")
+                        continue
+                        
+                    print(f"✓ 選択発電機: 第{gen_num}号機")
+                    break
+                    
+                except ValueError:
+                    print("❌ 数字を入力してください")
+            
+            # 擾乱量入力
+            while True:
+                try:
+                    amp_input = input("擾乱量 Δδ [rad] (例: -1.39): ").strip()
+                    dist_amp = float(amp_input)
+                    
+                    print(f"✓ 擾乱量: {dist_amp:.3f} rad")
+                    break
+                    
+                except ValueError:
+                    print("❌ 数値を入力してください（例: -1.39）")
+            
+            # 擾乱情報を保存
+            disturbances.append((area_idx, gen_num, dist_amp))
+            print(f"\n📝 擾乱を追加しました:")
+            print(f"   エリア: {areas[area_idx]}")
+            print(f"   発電機: 第{gen_num}号機")
+            print(f"   擾乱量: {dist_amp:.3f} rad")
+            
+            # 追加確認
+            if len(disturbances) >= 5:  # 過度な擾乱を防止
+                print("\n⚠️  既に5つの擾乱が設定されています。これ以上の追加は推奨されません。")
+                break
                 
+        if disturbances:
+            print(f"\n✓ 合計 {len(disturbances)} 個の擾乱が設定されました")
+        else:
+            print("\n✓ 擾乱なしでシミュレーションを実行します")
+            
         return disturbances
         
     def create_connection_matrix(self, selected_indices, ns):
@@ -354,15 +414,23 @@ class SwingSimulator:
         cum_n = np.concatenate([[0], np.cumsum(n_each)])
         g_total = cum_n[-1]
         
-        print("\n選択されたエリアと発電機台数:")
+        print("\n=== 選択されたエリア ===")
+        total_generators = sum(n_each)
         for i, (area, count) in enumerate(zip(areas, n_each)):
             print(f"  {area}: {count}台")
+        print(f"  合計発電機数: {total_generators}台")
         
         # 確認
-        confirm = input("\n上記設定でシミュレーションを続行しますか？ (y/n): ")
-        if confirm.lower() != 'y':
-            print("シミュレーションをキャンセルしました")
-            return
+        print("\n上記設定でシミュレーションを続行しますか？")
+        while True:
+            confirm = input("  y: 続行, n: キャンセル (y/n): ").strip().lower()
+            if confirm == 'y':
+                break
+            elif confirm == 'n':
+                print("シミュレーションをキャンセルしました")
+                return
+            else:
+                print("❌ 'y'または'n'を入力してください")
         
         # 5. 擾乱設定
         disturbances = self.setup_disturbances(areas, n_each)
@@ -390,28 +458,42 @@ class SwingSimulator:
                                eps_spread * np.random.randn(n_each[i]))
         
         # 擾乱適用
-        for area_idx, gen_num, dist_amp in disturbances:
-            dist_global_idx = cum_n[area_idx] + gen_num - 1
-            delta0[dist_global_idx] = dist_amp
-            print(f"擾乱適用: {areas[area_idx]}エリア 発電機{gen_num} -> {dist_amp:.3f} rad")
+        if disturbances:
+            print("\n=== 擾乱適用 ===")
+            for area_idx, gen_num, dist_amp in disturbances:
+                dist_global_idx = cum_n[area_idx] + gen_num - 1
+                delta0[dist_global_idx] = dist_amp
+                print(f"✓ {areas[area_idx]}エリア 第{gen_num}号機 -> {dist_amp:.3f} rad")
         
         init_conditions = np.concatenate([delta0, omega0])
         
         # 9. ODE求解
-        print("\nシミュレーション実行中...")
-        t_span = np.linspace(0, 25, 1000)
+        print("\n=== シミュレーション実行 ===")
+        print("計算中...")
         
-        solution = odeint(self.dynamics, init_conditions, t_span, 
-                         args=(n_each, ns, cum_n, cmat, p_m_arr, b_arr, b_int_arr, eps_arr))
-        
-        print("シミュレーション完了!")
-        
-        # 10. 可視化
-        print("可視化を開始します...")
-        self.visualize_network(t_span, solution, ns, n_each, cum_n, base_lon_lat, areas)
-        
-        # 11. COI時系列プロット
-        self.plot_coi_timeseries(t_span, solution, ns, n_each, cum_n, areas)
+        try:
+            t_span = np.linspace(0, 25, 1000)
+            
+            solution = odeint(self.dynamics, init_conditions, t_span, 
+                             args=(n_each, ns, cum_n, cmat, p_m_arr, b_arr, b_int_arr, eps_arr))
+            
+            print("✓ 計算完了!")
+            
+            # 10. 可視化
+            print("\n=== 可視化開始 ===")
+            print("注意: ウィンドウを閉じるとプログラムが終了します")
+            
+            self.visualize_network(t_span, solution, ns, n_each, cum_n, base_lon_lat, areas)
+            
+            # 11. COI時系列プロット
+            print("COI時系列データをプロット中...")
+            self.plot_coi_timeseries(t_span, solution, ns, n_each, cum_n, areas)
+            
+            print("\n✓ シミュレーション完了!")
+            
+        except Exception as e:
+            print(f"❌ シミュレーション実行エラー: {e}")
+            print("パラメータを確認してください")
 
 def main():
     """メイン関数"""
