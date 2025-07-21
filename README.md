@@ -2,9 +2,31 @@
 
 日本の10エリア（北海道〜沖縄）の電力系統における連成スイング（同期安定性）をシミュレーションするプログラムです。
 
+**MATLAB版とPython版の両方を提供しています。**
+
 ## 概要
 
 このプロジェクトは、日本の電力系統を10の地域エリアに分割し、各エリア内の発電機群の動的な挙動を連成スイング方程式で解析します。地理的な位置情報と合わせて、リアルタイムで同期安定性を可視化できます。
+
+## クイックスタート
+
+**Python版（推奨）**
+```bash
+git clone https://github.com/lutelute/Japan_Swing.git
+cd Japan_Swing/python
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python simulate_area_network.py
+```
+
+**MATLAB版**
+```bash
+git clone https://github.com/lutelute/Japan_Swing.git
+cd Japan_Swing/matlab
+python generate_area_template.py  # 初回のみ
+# MATLABでsimulate_area_networkを実行
+```
 
 ## 機能
 
@@ -19,10 +41,18 @@
 ```
 Japan_Swing/
 ├── matlab/
-│   ├── simulate_area_network.m         # メインシミュレーションスクリプト
+│   ├── simulate_area_network.m         # メインシミュレーションスクリプト (MATLAB)
 │   ├── generate_area_template.py       # Excelテンプレート生成スクリプト
 │   ├── area_parameters_template.xlsx   # パラメータ設定ファイル
 │   └── ~$area_parameters_template.xlsx # Excelテンポラリファイル
+├── python/
+│   ├── simulate_area_network.py        # メインシミュレーションスクリプト (Python)
+│   ├── generate_area_template.py       # Excelテンプレート生成スクリプト
+│   ├── requirements.txt                # Python依存関係
+│   ├── run.sh                          # 実行スクリプト (Linux/macOS)
+│   ├── run.bat                         # 実行スクリプト (Windows)
+│   ├── README_python.md                # Python版詳細説明
+│   └── venv/                           # 仮想環境（自動生成）
 └── README.md
 ```
 
@@ -30,10 +60,17 @@ Japan_Swing/
 
 ### 1. 環境要件
 
+#### MATLAB版
 - MATLAB (Curve Fitting Toolbox、Mapping Toolboxが推奨)
 - Python 3.x (pandas, xlsxwriter) - テンプレート生成用
 
+#### Python版
+- Python 3.8以上
+- pip (パッケージ管理)
+
 ### 2. 実行手順
+
+#### MATLAB版
 
 1. **パラメータテンプレート生成**（初回のみ）
    ```bash
@@ -47,10 +84,69 @@ Japan_Swing/
    simulate_area_network
    ```
 
-3. **実行時の設定**
+#### Python版
+
+1. **初期設定**（初回のみ）
+   ```bash
+   cd python
+   
+   # 仮想環境作成
+   python3 -m venv venv
+   
+   # 仮想環境をアクティベート
+   source venv/bin/activate  # Linux/macOS
+   # または
+   venv\Scripts\activate     # Windows
+   
+   # 依存ライブラリをインストール
+   pip install -r requirements.txt
+   ```
+
+2. **シミュレーション実行**
+   ```bash
+   cd python
+   
+   # 仮想環境をアクティベート
+   source venv/bin/activate
+   
+   # シミュレーション実行
+   python simulate_area_network.py
+   
+   # 実行後は仮想環境をデアクティベート
+   deactivate
+   ```
+
+   **簡単実行（推奨）**
+   ```bash
+   cd python
+   ./run.sh     # Linux/macOS
+   run.bat      # Windows
+   ```
+
+#### 3. 実行時の設定（共通）
    - 可視化対象エリアを選択
    - 擾乱を投入するエリアと発電機番号を指定
    - 擾乱量（$\Delta\delta$ [rad]）を設定
+
+#### 4. 版の違い
+
+| 項目 | MATLAB版 | Python版 |
+|------|----------|----------|
+| **インターフェース** | GUIダイアログ | コンソール入力 |
+| **可視化** | MATLAB図形 | matplotlib |
+| **依存関係** | MATLABツールボックス | Pythonライブラリ |
+| **実行方法** | MATLABコマンド | Pythonスクリプト |
+| **メモリ効率** | 高 | 中 |
+| **カスタマイズ性** | 中 | 高 |
+
+#### 5. トラブルシューティング
+
+**Python版でよくある問題:**
+
+- **仮想環境が見つからない**: `python3 -m venv venv`で仮想環境を作成してください
+- **ライブラリエラー**: 仮想環境がアクティベートされているか確認してください
+- **可視化が表示されない**: GUI環境でPythonを実行しているか確認してください
+- **パーミッションエラー**: `chmod +x run.sh`でスクリプトに実行権限を付与してください
 
 ### 3. パラメータ調整
 
