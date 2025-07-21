@@ -35,6 +35,22 @@ distGen = str2double(answ{1});
 distAmp = str2double(answ{2});
 
 %% 4) パラメータセット
+%% 4) パラメータセット
+N_each   = master.Generator_Count;
+
+% --- Excel から取得した発電機台数を確認 -----------------------
+disp('▼ Excel から取得した発電機台数');
+disp(table(areas, N_each, ...
+     'VariableNames', {'Area','Generator_Count'}));
+
+choiceGen = questdlg( ...
+    '上記台数設定でシミュレーションを続行しますか?', ...
+    'Generator Count Check', ...
+    'はい','キャンセル','はい');
+if strcmp(choiceGen,'キャンセル')
+    disp('キャンセルされたのでスクリプトを終了します。');
+    return;
+end
 N_each   = master.Generator_Count;
 cumN     = [0; cumsum(N_each)];
 G        = cumN(end);
