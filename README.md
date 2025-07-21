@@ -50,17 +50,17 @@ Japan_Swing/
 3. **実行時の設定**
    - 可視化対象エリアを選択
    - 擾乱を投入するエリアと発電機番号を指定
-   - 擾乱量（Δδ [rad]）を設定
+   - 擾乱量（$\Delta\delta$ [rad]）を設定
 
 ### 3. パラメータ調整
 
 `area_parameters_template.xlsx`を編集することで以下のパラメータを調整できます：
 
 - `Generator_Count`: エリア内発電機台数
-- `p_m`: 機械的入力パワー
-- `b`: 同期化力係数
-- `b_int`: エリア内結合係数
-- `epsilon`: エリア間結合強度
+- `p_m`: 機械的入力パワー $P_m$
+- `b`: 同期化力係数 $B$
+- `b_int`: エリア内結合係数 $B_{int}$
+- `epsilon`: エリア間結合強度 $\varepsilon$
 - `Connection_Coeff`: エリア間接続係数
 
 ## シミュレーション詳細
@@ -69,15 +69,21 @@ Japan_Swing/
 
 各発電機の動特性は以下の連成スイング方程式で表現されます：
 
-```
-dδ/dt = ω
-dω/dt = P_m - B sin(δ) - B_int[sin(δ-δ_prev) + sin(δ-δ_next)] - ε B_int g
-```
+$$
+\begin{align}
+\frac{d\delta}{dt} &= \omega \\
+\frac{d\omega}{dt} &= P_m - B \sin(\delta) - B_{int}[\sin(\delta-\delta_{prev}) + \sin(\delta-\delta_{next})] - \varepsilon B_{int} g
+\end{align}
+$$
 
 ここで：
-- δ: 発電機角度
-- ω: 角速度
-- g: エリア間相互作用項
+- $\delta$: 発電機角度 [rad]
+- $\omega$: 角速度 [rad/s]
+- $P_m$: 機械的入力パワー [p.u.]
+- $B$: 同期化力係数 [p.u.]
+- $B_{int}$: エリア内結合係数 [p.u.]
+- $\varepsilon$: エリア間結合強度 [p.u.]
+- $g$: エリア間相互作用項 [p.u.]
 
 ### 可視化
 
