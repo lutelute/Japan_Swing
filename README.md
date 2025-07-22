@@ -1,6 +1,6 @@
 # Japan_Swing
 
-![Japan Swing Demo](images/Japan_Swing_Demo.gif)
+<img src="images/Japan_Swing_Demo.gif" alt="Japan Swing Demo" width="150%">
 
 日本の10エリア（北海道〜沖縄）の電力系統における連成スイング（同期安定性）をシミュレーションするプログラムです。
 
@@ -128,6 +128,7 @@ Japan_Swing/
    **実行手順のデモ**
    
    ![実行手順デモ](images/execution_demo.gif)
+   
    *GIF: Python版シミュレーションの実行手順とインターフェースの動作例*
 
 #### 3. 実行時の設定（共通）
