@@ -1,6 +1,6 @@
 # Japan_Swing
 
-![実行デモ](images/execution_demo.gif)
+![Japan Swing Demo](Japan_Swing_Demo.gif)
 
 日本の10エリア（北海道〜沖縄）の電力系統における連成スイング（同期安定性）をシミュレーションするプログラムです。
 
